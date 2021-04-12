@@ -1,3 +1,4 @@
+#include "kernel/types.h"
 struct stat;
 struct rtcdate;
 
@@ -40,3 +41,9 @@ void free(void*);
 int atoi(const char*);
 int memcmp(const void *, const void *, uint);
 void *memcpy(void *, const void *, uint);
+
+
+
+//Self-added functions.
+int atoi_safe(const char*, int*);
+int readline(int, char *, int);
