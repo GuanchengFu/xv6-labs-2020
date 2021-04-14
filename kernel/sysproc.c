@@ -6,6 +6,10 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "sysinfo.h"
+
+extern uint64 total_free_memory();
+extern uint64 get_running_processes();
 
 uint64
 sys_exit(void)
@@ -112,6 +116,18 @@ sys_trace(void)
 uint64
 sys_sysinfo(void)
 {
-    printf("Called sysinfo\n");
+    // We need to get all the system information.
+    struct sysinfo info;
+    struct proc *p = myproc();
+    info.freemem = total_free_memory();
+    info.nproc = get_running_processes();
+
+    // Get the address from the user space.
+    uint64 addr;
+    if (argaddr(0, &addr) < 0)
+        return -1;
+
+    if (copyout(p->pagetable, addr, (char *)&info, sizeof(info)) < 0)
+        return -1;
     return 0;
 }

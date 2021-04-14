@@ -694,3 +694,19 @@ procdump(void)
     printf("\n");
   }
 }
+
+
+uint64
+get_running_processes() {
+    struct proc *p;
+    // Iterate through the process table.
+    uint64 count = 0;
+    for (p = proc; p < &proc[NPROC]; p ++) {
+        acquire(&p -> lock);
+        if (p -> state != UNUSED) {
+            count += 1;
+        }
+        release(&p -> lock);
+    }
+    return count;
+}
