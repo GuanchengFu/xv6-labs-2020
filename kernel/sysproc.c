@@ -104,6 +104,7 @@ sys_trace(void)
 
     if (argint(0, &mask) < 0)
         return -1;
-    printf("Called trace with mask:%d.\n", mask);
-    return 1;
+    //printf("Called trace with mask:%d.\n", mask);
+    myproc()->mask = mask;
+    return 0;
 }
