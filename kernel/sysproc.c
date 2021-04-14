@@ -96,7 +96,6 @@ sys_uptime(void)
   return xticks;
 }
 
-//TODO: Implement
 uint64
 sys_trace(void)
 {
@@ -106,5 +105,13 @@ sys_trace(void)
         return -1;
     //printf("Called trace with mask:%d.\n", mask);
     myproc()->mask = mask;
+    return 0;
+}
+
+
+uint64
+sys_sysinfo(void)
+{
+    printf("Called sysinfo\n");
     return 0;
 }
