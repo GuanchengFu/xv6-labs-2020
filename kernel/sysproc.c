@@ -95,3 +95,15 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+//TODO: Implement
+uint64
+sys_trace(void)
+{
+    int mask;
+
+    if (argint(0, &mask) < 0)
+        return -1;
+    printf("Called trace with mask:%d.\n", mask);
+    return 1;
+}
