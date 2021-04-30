@@ -330,7 +330,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   }
   return 0;
 
- err:
+err:
   uvmunmap(new, 0, i / PGSIZE, 1);
   return -1;
 }
@@ -438,5 +438,44 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return 0;
   } else {
     return -1;
+  }
+}
+
+void vmprint_third_level(pagetable_t pagetable) {
+  for (int i = 0; i < 512; i++) {
+    pte_t pte = pagetable[i];
+    if (pte & PTE_V) {
+      printf(".. .. ..%d: pte %p pa %p\n", i, pte, PTE2PA(pte));
+    }
+  }
+}
+
+// The pagetable provided is in level 2.
+void vmprint_second_level(pagetable_t pagetable) {
+  for (int i = 0; i < 512; i++) {
+    pte_t pte = pagetable[i];
+    if (pte & PTE_V) {
+      printf(".. ..%d: pte %p pa %p\n", i, pte, PTE2PA(pte));
+      pagetable_t pt3 = (pagetable_t)PTE2PA(pte);
+      vmprint_third_level(pt3);
+    }
+  }
+}
+
+// Print the pagetable specified in the argument.
+void vmprint(pagetable_t pagetable){
+  // Print its address.
+  printf("page table %p\n", pagetable);
+  for (int i = 0; i < 512; i++) {
+    // Get the pte entry from the pagetable.
+    pte_t pte = pagetable[i];
+    if (pte & PTE_V) {
+      //Print the first level banner.
+      printf("..%d: pte %p pa %p\n", i, pte, PTE2PA(pte));
+      // Get the second level page table, this might be the physical address.
+      // Or the virtual address.  It does not matter, because it uses identity mapping.
+      pagetable_t pt2 = (pagetable_t)PTE2PA(pte);
+      vmprint_second_level(pt2);
+    }
   }
 }
