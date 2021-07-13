@@ -12,6 +12,7 @@ static int loadseg(pde_t *pgdir, uint64 addr, struct inode *ip, uint offset, uin
 int
 exec(char *path, char **argv)
 {
+  /* path is the path to the binary file, argv is the arguments. */
   char *s, *last;
   int i, off;
   uint64 argc, sz = 0, sp, ustack[MAXARG+1], stackbase;
@@ -30,6 +31,7 @@ exec(char *path, char **argv)
   ilock(ip);
 
   // Check ELF header
+  // Guest it will read the program header, and store it inside the struct elf.
   if(readi(ip, 0, (uint64)&elf, 0, sizeof(elf)) != sizeof(elf))
     goto bad;
   if(elf.magic != ELF_MAGIC)
@@ -49,6 +51,8 @@ exec(char *path, char **argv)
     if(ph.vaddr + ph.memsz < ph.vaddr)
       goto bad;
     uint64 sz1;
+    // This states that it should be mapped to vaddr, and its size is ph.memsz.
+    // Map it and prepare for the pagetable used by the userspace, alloc space for later uses.
     if((sz1 = uvmalloc(pagetable, sz, ph.vaddr + ph.memsz)) == 0)
       goto bad;
     sz = sz1;
@@ -60,7 +64,7 @@ exec(char *path, char **argv)
   iunlockput(ip);
   end_op();
   ip = 0;
-
+  // Get the current program.
   p = myproc();
   uint64 oldsz = p->sz;
 
@@ -115,7 +119,6 @@ exec(char *path, char **argv)
   p->trapframe->epc = elf.entry;  // initial program counter = main
   p->trapframe->sp = sp; // initial stack pointer
   proc_freepagetable(oldpagetable, oldsz);
-
   if (p->pid == 1) {
     vmprint(p->pagetable);
   }

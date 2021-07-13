@@ -167,6 +167,8 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
   return 0;
 }
 
+
+
 // Remove npages of mappings starting from va. va must be
 // page-aligned. The mappings must exist.
 // Optionally free the physical memory.
@@ -225,6 +227,7 @@ uvminit(pagetable_t pagetable, uchar *src, uint sz)
 
 // Allocate PTEs and physical memory to grow process from oldsz to
 // newsz, which need not be page aligned.  Returns new size or 0 on error.
+// uvmalloc does not add new mappings in the kernel pagetable.
 uint64
 uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)
 {
@@ -242,6 +245,7 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)
       return 0;
     }
     memset(mem, 0, PGSIZE);
+    // Add it in the user pagetable.
     if(mappages(pagetable, a, PGSIZE, (uint64)mem, PTE_W|PTE_X|PTE_R|PTE_U) != 0){
       kfree(mem);
       uvmdealloc(pagetable, a, oldsz);
@@ -312,7 +316,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   uint64 pa, i;
   uint flags;
   char *mem;
-
+  
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
       panic("uvmcopy: pte should exist");
@@ -478,4 +482,28 @@ void vmprint(pagetable_t pagetable){
       vmprint_second_level(pt2);
     }
   }
+}
+
+
+
+
+/*
+ * create a copy of the kernel pagetable.
+ */
+pagetable_t
+kvmcopy()
+{
+  pagetable_t new_pt = uvmcreate();
+  int index;
+  if (!new_pt) {
+    /* No memory was allocated, choose to return NULL. */
+    return 0;
+  }
+
+  // Now we copy the kernel pagetable.
+  for (index = 0; index < 512; index ++) {
+    // Select the entry, which is a pte.
+    new_pt[index] = kernel_pagetable[index];
+  }
+  return new_pt;
 }

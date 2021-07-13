@@ -26,7 +26,9 @@ struct {
 void
 kinit()
 {
+  // Add all the area into the memory manager.
   initlock(&kmem.lock, "kmem");
+  // All the free memory are added into the memory manager.
   freerange(end, (void*)PHYSTOP);
 }
 
