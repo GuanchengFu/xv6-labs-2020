@@ -155,6 +155,15 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
+  // we should also free the kstack, but how?
+  if(p->kernel_pt){
+    uvmunmap(p->kernel_pt, p->kstack, 1, 1);
+    // also free the pagetable.
+    kfree((void*)p->kernel_pt);
+  }
+  p->kstack = 0;
+  p->kernel_pt = 0;
+
 }
 
 // Create a user page table for a given process,
