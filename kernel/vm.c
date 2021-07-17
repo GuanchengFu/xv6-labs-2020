@@ -501,9 +501,16 @@ kvmcopy()
   }
 
   // Now we copy the kernel pagetable.
-  for (index = 0; index < 512; index ++) {
+  for (index = 1; index < 512; index ++) {
     // Select the entry, which is a pte.
     new_pt[index] = kernel_pagetable[index];
   }
+  // The first entry is also used for the mappings in the user space.
+  // Therefore, we choose to map the first entry.
+  // shoud we map the clint -> no
+  mappages(new_pt, PLIC, 0x400000, PLIC, PTE_R | PTE_W);
+  mappages(new_pt, UART0, PGSIZE, UART0, PTE_R | PTE_W);
+  mappages(new_pt, VIRTIO0, PGSIZE, VIRTIO0, PTE_R | PTE_W);
+
   return new_pt;
 }
