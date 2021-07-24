@@ -293,6 +293,38 @@ freewalk(pagetable_t pagetable)
   kfree((void*)pagetable);
 }
 
+void
+freewalk_without_check(pagetable_t pagetable)
+{
+  for(int i = 0; i < 512; i++){
+    pte_t pte = pagetable[i];
+    if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0){
+      // this PTE points to a lower-level page table.
+      uint64 child = PTE2PA(pte);
+      freewalk_without_check((pagetable_t)child);
+      kfree((void*)child);
+      pagetable[i] = 0;
+    }
+  }
+}
+
+/*
+ * Recrusively free the process's kernel_pt.
+ */
+void
+free_kernel_pt(pagetable_t pagetable, uint64 kstack)
+{
+  // free the kstack, and unmap it.
+  uvmunmap(pagetable, kstack, 1, 1);
+  // free the pages used in the first entry, but we actually
+  // do not care about the phy memory.
+  for(int i = 1; i < 512; i ++){
+    pagetable[i] = 0;
+  }
+  freewalk_without_check(pagetable);
+  kfree((void*)pagetable);
+}
+
 // Free user memory pages,
 // then free page-table pages.
 void

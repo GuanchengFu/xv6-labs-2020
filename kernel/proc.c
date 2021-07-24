@@ -157,9 +157,7 @@ freeproc(struct proc *p)
   p->state = UNUSED;
   // we should also free the kstack, but how?
   if(p->kernel_pt){
-    uvmunmap(p->kernel_pt, p->kstack, 1, 1);
-    // also free the pagetable.
-    kfree((void*)p->kernel_pt);
+    free_kernel_pt(p->kernel_pt, p->kstack);
   }
   p->kstack = 0;
   p->kernel_pt = 0;
@@ -477,7 +475,6 @@ scheduler(void)
   for(;;){
     // Avoid deadlock by ensuring that devices can interrupt.
     intr_on();
-    
     int found = 0;
     for(p = proc; p < &proc[NPROC]; p++) {
       acquire(&p->lock);
@@ -495,8 +492,8 @@ scheduler(void)
 
         // Process is done running for now.
         // It should have changed its p->state before coming back.
+        kvminithart();
         c->proc = 0;
-
         found = 1;
       }
       release(&p->lock);
