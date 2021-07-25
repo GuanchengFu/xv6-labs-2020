@@ -1,0 +1,8 @@
+ 0 - 0 - 0: code and data, read write exec
+ 0 - 0 - 1: guard page, read write exec, but not in user mode.
+ 0 - 0 - 2: stack why it is read, write executable?
+
+
+
+ 510:heap
+ 511:trampoline page.

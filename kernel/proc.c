@@ -227,7 +227,7 @@ userinit(void)
 
   p = allocproc();
   initproc = p;
-  
+
   // allocate one user page and copy init's instructions
   // and data into it.
   uvminit(p->pagetable, initcode, sizeof(initcode));
@@ -241,7 +241,7 @@ userinit(void)
   p->cwd = namei("/");
 
   p->state = RUNNABLE;
-
+  kvmmapuser(p->kernel_pt, p->pagetable, p->sz, 0);
   release(&p->lock);
 }
 
@@ -254,6 +254,8 @@ growproc(int n)
   struct proc *p = myproc();
 
   sz = p->sz;
+  if (sz + n >= PLIC)
+    return -1;
   if(n > 0){
     if((sz = uvmalloc(p->pagetable, sz, sz + n)) == 0) {
       return -1;
@@ -261,6 +263,7 @@ growproc(int n)
   } else if(n < 0){
     sz = uvmdealloc(p->pagetable, sz, sz + n);
   }
+  kvmmapuser(p->kernel_pt, p->pagetable, sz, p->sz);
   p->sz = sz;
   return 0;
 }
@@ -306,6 +309,8 @@ fork(void)
   pid = np->pid;
 
   np->state = RUNNABLE;
+
+  kvmmapuser(np->kernel_pt, np->pagetable, np->sz, 0);
 
   release(&np->lock);
 
@@ -500,7 +505,6 @@ scheduler(void)
     }
 #if !defined (LAB_FS)
     if(found == 0) {
-      kvminithart();
       intr_on();
       asm volatile("wfi");
     }
