@@ -708,6 +708,9 @@ void backtrace_helper(uint64 stackframe, uint64 upperlimit)
     addr = (uint64 *)(stackframe - 8);
     printf("%p\n", *addr);
     // Use the stackframe to find the previous stack frame.
+    addr = (uint64 *)(stackframe - 16);
+    if (*addr != upperlimit)
+      backtrace_helper(*addr, upperlimit);
   }
 }
 
