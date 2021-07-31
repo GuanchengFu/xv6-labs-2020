@@ -1,0 +1,43 @@
+Function g:
+1. allocate the stack.
+2. *(sp + 8) = s0
+3. x in a0 (a0 = a0 + 3)
+4. reload s0
+return.
+
+
+
+
+
+Function f:
+It just calls function g.
+
+We should allocate the stack, store the call-saved registers.
+Then call the function, paepare the arguments.
+
+The real compiled version, just optimized function g.
+
+1. Register a0 - a7 contains arguments to the function calls.
+2. The caculation on the function call happens in the compiler stage, because it directly loads the value into the register a1.
+3. printf located at 0x630
+4. address 0x38
+5. The 57616 will be loaded into register a1, a2 is the address of the int i, which points to a address space that contains the value
+address space from low to high:
+72 6c 64 00
+r  l d
+World\0    This is the latter word.
+
+The first word will be passed value 57616, how could this be converted?
+57616 converts to hex is 0xe110
+Which will be printed just like this.
+So the result is He110 World
+
+
+If big endian is used, then i's value should be reverted to get the correct word.
+The %x value do not need to be changed.
+
+
+6. a random value that is placed in a2, depends on the value of a2.
+
+
+
