@@ -95,3 +95,24 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+
+
+uint64
+sys_sigalarm(void)
+{
+  printf("sys_sigalarm get called\n");
+  int interval;
+  uint64 handler;
+  if (argint(0, &interval) < 0 && argaddr(1, &handler) < 0)
+    return -1;
+  printf("interval is %d, handler's user space address is %p\n", interval, handler);
+  return 1;
+}
+
+uint64
+sys_sigreturn(void)
+{
+  printf("sys_sigreturn get called!\n");
+  return 0;
+}

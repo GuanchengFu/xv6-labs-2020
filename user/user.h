@@ -23,6 +23,9 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+int sigalarm(int ticks, void (*handler)());
+// This function just sends (0, 0) as argument to the kernel.
+int sigreturn(void);
 
 // ulib.c
 int stat(const char*, struct stat*);
