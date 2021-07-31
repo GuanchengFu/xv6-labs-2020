@@ -697,3 +697,15 @@ procdump(void)
     printf("\n");
   }
 }
+
+void backtrace_helper(uint64 stackframe)
+{
+  printf("Change this to the real function.\n");
+}
+
+void backtrace(void)
+{
+  // get the current process's stack frame.
+  printf("backtrace:\n");
+  backtrace_helper(0);
+}
