@@ -20,7 +20,7 @@ static void wakeup1(struct proc *chan);
 static void freeproc(struct proc *p);
 
 extern char trampoline[]; // trampoline.S
-
+extern pagetable_t kernel_pagetable;
 // initialize the proc table at boot time.
 void
 procinit(void)
@@ -698,14 +698,24 @@ procdump(void)
   }
 }
 
-void backtrace_helper(uint64 stackframe)
+void backtrace_helper(uint64 stackframe, uint64 upperlimit)
 {
-  printf("Change this to the real function.\n");
+  uint64 *addr;
+  // The stackframe is not zero.
+  if (stackframe) {
+    // We need to cast the stackframe address to the read physical address.
+    // we should use this as a pointer, to find the contents in it.
+    addr = (uint64 *)(stackframe - 8);
+    printf("%p\n", *addr);
+    // Use the stackframe to find the previous stack frame.
+  }
 }
 
 void backtrace(void)
 {
+  uint64 stackframe;
+  stackframe = r_fp();
   // get the current process's stack frame.
   printf("backtrace:\n");
-  backtrace_helper(0);
+  backtrace_helper(stackframe, PGROUNDUP(stackframe));
 }
