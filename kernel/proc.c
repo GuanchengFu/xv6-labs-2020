@@ -125,6 +125,7 @@ found:
   p -> handler_func = -1;
   p -> interval = 0;
   p -> tick_after = 0;
+  p -> alarmframe = 0;
 
   // Set up new context to start executing at forkret,
   // which returns to user space.
@@ -146,6 +147,8 @@ freeproc(struct proc *p)
   p->trapframe = 0;
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
+  if(p->alarmframe)
+    kfree((void*)p->alarmframe);
   p->pagetable = 0;
   p->sz = 0;
   p->pid = 0;

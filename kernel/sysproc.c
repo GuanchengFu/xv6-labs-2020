@@ -115,12 +115,25 @@ sys_sigalarm(void)
   p -> interval = interval;
   p -> handler_func = handler;
   p -> tick_after = 0;
+  if (p -> alarmframe == 0) {
+    // we should allocate space for it.
+    if ((p->alarmframe = (struct trapframe *)kalloc()) == 0) {
+      panic("not enough free memory in sigalarm.\n");
+    }
+  }
   return 0;
 }
 
+/* This function get called when the function wants to
+ * resume execution.
+ */
 uint64
 sys_sigreturn(void)
 {
-  printf("sys_sigreturn get called!\n");
-  return 0;
+  // now we should return to where we left off.
+  struct proc *p = myproc();
+  uint64 a0 = p -> alarmframe -> a0;
+  memmove(p -> trapframe, p -> alarmframe, sizeof(struct trapframe));
+  memset(p -> alarmframe, 0, sizeof(struct trapframe));
+  return a0;
 }

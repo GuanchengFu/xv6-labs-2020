@@ -85,6 +85,10 @@ usertrap(void)
       if (p -> tick_after != p -> interval) {
         // We let go the cpu.
         yield();
+      } else {
+        // we should record the state to ensure that we can later resume the execution.
+        // We copy the content of the trapframe to the alarmframe, to store it temporarily.
+        memmove((void *) p->alarmframe, (void *) p-> trapframe, sizeof(struct trapframe));
       }
     } else {
       yield();
