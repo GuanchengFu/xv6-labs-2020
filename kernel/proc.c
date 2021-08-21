@@ -122,7 +122,7 @@ found:
   }
 
   // Initalize fields used for alarm.
-  p -> handler_func = 0;
+  p -> handler_func = -1;
   p -> interval = 0;
   p -> tick_after = 0;
 

@@ -46,10 +46,10 @@ usertrap(void)
   w_stvec((uint64)kernelvec);
 
   struct proc *p = myproc();
-  
+
   // save user program counter.
   p->trapframe->epc = r_sepc();
-  
+
   if(r_scause() == 8){
     // system call
 
@@ -70,6 +70,7 @@ usertrap(void)
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+    printf("name:%s\n", p->name);
     p->killed = 1;
   }
 
@@ -77,8 +78,19 @@ usertrap(void)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
-    yield();
+  if(which_dev == 2) {
+    // Let's check if we need to use the handler function.
+    if (p->interval != 0) {
+      p -> tick_after += 1;
+      if (p -> tick_after != p -> interval) {
+        // We let go the cpu.
+        yield();
+      }
+    } else {
+      yield();
+    }
+  }
+
 
   usertrapret();
 }
@@ -108,7 +120,7 @@ usertrapret(void)
 
   // set up the registers that trampoline.S's sret will use
   // to get to user space.
-  
+
   // set S Previous Privilege mode to User.
   unsigned long x = r_sstatus();
   x &= ~SSTATUS_SPP; // clear SPP to 0 for user mode
@@ -116,7 +128,11 @@ usertrapret(void)
   w_sstatus(x);
 
   // set S Exception Program Counter to the saved user pc.
-  w_sepc(p->trapframe->epc);
+  if (p -> tick_after == p -> interval && p -> interval != 0) {
+    p -> tick_after = 0;
+    w_sepc(p->handler_func);
+  } else
+    w_sepc(p->trapframe->epc);
 
   // tell trampoline.S the user page table to switch to.
   uint64 satp = MAKE_SATP(p->pagetable);
