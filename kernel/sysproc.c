@@ -120,6 +120,7 @@ sys_sigalarm(void)
     if ((p->alarmframe = (struct trapframe *)kalloc()) == 0) {
       panic("not enough free memory in sigalarm.\n");
     }
+    memset(p->alarmframe, 0, sizeof(struct trapframe));
   }
   return 0;
 }
@@ -133,6 +134,7 @@ sys_sigreturn(void)
   // now we should return to where we left off.
   struct proc *p = myproc();
   uint64 a0 = p -> alarmframe -> a0;
+  // alarmframe should be moved to p->trapframe.
   memmove(p -> trapframe, p -> alarmframe, sizeof(struct trapframe));
   memset(p -> alarmframe, 0, sizeof(struct trapframe));
   return a0;

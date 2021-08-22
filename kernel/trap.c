@@ -81,14 +81,22 @@ usertrap(void)
   if(which_dev == 2) {
     // Let's check if we need to use the handler function.
     if (p->interval != 0) {
-      p -> tick_after += 1;
+      if (p->tick_after + 1 <= p-> interval)
+        p -> tick_after += 1;
       if (p -> tick_after != p -> interval) {
         // We let go the cpu.
         yield();
       } else {
         // we should record the state to ensure that we can later resume the execution.
         // We copy the content of the trapframe to the alarmframe, to store it temporarily.
-        memmove((void *) p->alarmframe, (void *) p-> trapframe, sizeof(struct trapframe));
+        p -> tick_after = 0;
+        // Shall we always update the alarmframe, if we have already in the alarm function, we do not need to do it again.
+        // if we are not in alarm function previously (alarmframe is 0).
+        if (p -> alarmframe -> kernel_satp == 0) {
+          memmove((void *) p->alarmframe, (void *) p-> trapframe, sizeof(struct trapframe));
+          p->trapframe->epc = p->handler_func;
+        }
+        // else we do nothing, because we have already recorded the state, we will just jump back to the previous alarm function.
       }
     } else {
       yield();
@@ -132,11 +140,12 @@ usertrapret(void)
   w_sstatus(x);
 
   // set S Exception Program Counter to the saved user pc.
-  if (p -> tick_after == p -> interval && p -> interval != 0) {
-    p -> tick_after = 0;
-    w_sepc(p->handler_func);
-  } else
-    w_sepc(p->trapframe->epc);
+  /* if (p -> tick_after == p -> interval && p -> interval != 0) { */
+  /*   p -> tick_after = 0; */
+  /*   w_sepc(p->handler_func); */
+  /* } else */
+  /*   w_sepc(p->trapframe->epc); */
+  w_sepc(p->trapframe->epc);
 
   // tell trampoline.S the user page table to switch to.
   uint64 satp = MAKE_SATP(p->pagetable);
