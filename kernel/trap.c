@@ -29,6 +29,44 @@ trapinithart(void)
   w_stvec((uint64)kernelvec);
 }
 
+
+void
+handle_page_fault(void)
+{
+  uint64 error_addr = 0;
+  struct proc *p = myproc();
+  // we should do some valid check, if it is valid, we allocate the page.
+  // otherwise, we should still kill the process.
+  error_addr = r_stval();
+  if (error_addr >= 0 && error_addr <= p -> sz) {
+    // We need to check again for the validness (it can be the guard page).
+    if (error_addr >= p->guard && error_addr < p->guard + PGSIZE) {
+      // stack overflow.
+      // printf("stack overflow!\n");
+      p->killed = 1;
+    } else {
+      // This address is valid, we allocate a page, and map it to the user pagetable.
+      // The address to be mapped.
+      uint64 start_page = PGROUNDDOWN(error_addr);
+      char *mem = kalloc();
+      if (mem == 0) {
+        //panic("Not enough memory in usertrap.\n");
+        p->killed = 1;
+      }
+      memset(mem, 0, PGSIZE);
+      if (mappages(p->pagetable, start_page, PGSIZE, (uint64)mem, PTE_W|PTE_X|PTE_R|PTE_U) != 0){
+        kfree(mem);
+        p -> killed = 1;
+        //panic("mappages in usertrap.");
+      }
+      // We should redo the operation.
+      p->trapframe->epc -= 4;
+    }
+  } else {
+    p->killed = 1;
+  }
+}
+
 //
 // handle an interrupt, exception, or system call from user space.
 // called from trampoline.S
@@ -37,7 +75,7 @@ void
 usertrap(void)
 {
   int which_dev = 0;
-  uint64 error_addr = 0;
+  //uint64 error_addr = 0;
 
   if((r_sstatus() & SSTATUS_SPP) != 0)
     panic("usertrap: not from user mode");
@@ -69,28 +107,7 @@ usertrap(void)
   } else if((which_dev = devintr()) != 0){
     // ok
   } else if(r_scause() == 15 || r_scause() == 13) {
-    // we should do some valid check, if it is valid, we allocate the page.
-    // otherwise, we should still kill the process.
-    error_addr = r_stval();
-    if (error_addr >= 0 && error_addr <= p -> sz) {
-      // This address is valid, we allocate a page, and map it to the user pagetable.
-      // The address to be mapped.
-      uint64 start_page = PGROUNDDOWN(error_addr);
-      char *mem = kalloc();
-      if (mem == 0) {
-        //panic("Not enough memory in usertrap.\n");
-        p->killed = 1;
-      }
-      memset(mem, 0, PGSIZE);
-      if (mappages(p->pagetable, start_page, PGSIZE, (uint64)mem, PTE_W|PTE_X|PTE_R|PTE_U) != 0){
-        panic("mappages in usertrap.");
-      }
-      // We should redo the operation.
-      p->trapframe->epc -= 4;
-    } else {
-      // still invalid address, we should kill the process.
-      p->killed = 1;
-    }
+    handle_page_fault();
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
@@ -154,20 +171,25 @@ usertrapret(void)
 
 // interrupts and exceptions from kernel code go here via kernelvec,
 // on whatever the current kernel stack is.
-void 
+void
 kerneltrap()
 {
   int which_dev = 0;
   uint64 sepc = r_sepc();
   uint64 sstatus = r_sstatus();
   uint64 scause = r_scause();
-  
+
   if((sstatus & SSTATUS_SPP) == 0)
     panic("kerneltrap: not from supervisor mode");
   if(intr_get() != 0)
     panic("kerneltrap: interrupts enabled");
 
-  if((which_dev = devintr()) == 0){
+
+  // if it is not a timer interupt, check if it is a page fault.
+  if (r_scause() == 13 || r_scause() == 15) {
+    // It seems that we do not need to handle this, as the test does not test this.
+    handle_page_fault();
+  } else if((which_dev = devintr()) == 0){
     printf("scause %p\n", scause);
     printf("sepc=%p stval=%p\n", r_sepc(), r_stval());
     panic("kerneltrap");

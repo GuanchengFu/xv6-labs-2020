@@ -95,7 +95,8 @@ struct proc {
   int pid;                     // Process ID
 
   // these are private to the process, so p->lock need not be held.
-  uint64 kstack;               // Virtual address of kernel stack
+  uint64 kstack;               // Virtual address of kernel stack.
+  uint64 guard;                // Virtual address of the guard page.
   uint64 sz;                   // Size of process memory (bytes)
   pagetable_t pagetable;       // User page table
   struct trapframe *trapframe; // data page for trampoline.S

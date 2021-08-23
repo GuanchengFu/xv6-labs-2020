@@ -72,6 +72,7 @@ exec(char *path, char **argv)
     goto bad;
   sz = sz1;
   uvmclear(pagetable, sz-2*PGSIZE);
+  p->guard = sz-2*PGSIZE;
   sp = sz;
   stackbase = sp - PGSIZE;
 

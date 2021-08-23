@@ -121,6 +121,7 @@ found:
     return 0;
   }
 
+  p->guard = 0;
   // Set up new context to start executing at forkret,
   // which returns to user space.
   memset(&p->context, 0, sizeof(p->context));
@@ -276,6 +277,8 @@ fork(void)
   np->sz = p->sz;
 
   np->parent = p;
+
+  np->guard = p->guard;
 
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
