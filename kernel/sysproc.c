@@ -47,8 +47,14 @@ sys_sbrk(void)
   if(argint(0, &n) < 0)
     return -1;
   addr = myproc()->sz;
-  if(growproc(n) < 0)
-    return -1;
+  if (n <= 0) {
+    // This will set the sz of the process properly.
+    if(growproc(n) < 0)
+      return -1;
+    else
+      return addr;
+  }
+  myproc()->sz += n;
   return addr;
 }
 

@@ -37,6 +37,7 @@ void
 usertrap(void)
 {
   int which_dev = 0;
+  uint64 error_addr = 0;
 
   if((r_sstatus() & SSTATUS_SPP) != 0)
     panic("usertrap: not from user mode");
@@ -46,10 +47,10 @@ usertrap(void)
   w_stvec((uint64)kernelvec);
 
   struct proc *p = myproc();
-  
+
   // save user program counter.
   p->trapframe->epc = r_sepc();
-  
+
   if(r_scause() == 8){
     // system call
 
@@ -67,6 +68,29 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
+  } else if(r_scause() == 15 || r_scause() == 13) {
+    // we should do some valid check, if it is valid, we allocate the page.
+    // otherwise, we should still kill the process.
+    error_addr = r_stval();
+    if (error_addr >= 0 && error_addr <= p -> sz) {
+      // This address is valid, we allocate a page, and map it to the user pagetable.
+      // The address to be mapped.
+      uint64 start_page = PGROUNDDOWN(error_addr);
+      char *mem = kalloc();
+      if (mem == 0) {
+        //panic("Not enough memory in usertrap.\n");
+        p->killed = 1;
+      }
+      memset(mem, 0, PGSIZE);
+      if (mappages(p->pagetable, start_page, PGSIZE, (uint64)mem, PTE_W|PTE_X|PTE_R|PTE_U) != 0){
+        panic("mappages in usertrap.");
+      }
+      // We should redo the operation.
+      p->trapframe->epc -= 4;
+    } else {
+      // still invalid address, we should kill the process.
+      p->killed = 1;
+    }
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
