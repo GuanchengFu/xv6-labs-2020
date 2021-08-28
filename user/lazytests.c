@@ -14,7 +14,7 @@ void
 sparse_memory(char *s)
 {
   char *i, *prev_end, *new_end;
-  
+
   prev_end = sbrk(REGION_SZ);
   if (prev_end == (char*)0xffffffffffffffffL) {
     printf("sbrk() failed\n");
@@ -81,6 +81,8 @@ oom(char *s)
 
   if((pid = fork()) == 0){
     m1 = 0;
+    // The malloc function will eventually call sbrk function.
+    // So the following memory is not actually allocated.
     while((m2 = malloc(4096*4096)) != 0){
       *(char**)m2 = m1;
       m1 = m2;

@@ -134,6 +134,7 @@ found:
 // free a proc structure and the data hanging from it,
 // including user pages.
 // p->lock must be held.
+// hopefully the freeproc will not lose any memory.
 static void
 freeproc(struct proc *p)
 {

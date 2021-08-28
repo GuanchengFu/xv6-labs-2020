@@ -5,6 +5,9 @@ _*
 *.asm
 *.sym
 *.img
+*.json
+*.files
+*.out
 vectors.S
 bootblock
 entryother

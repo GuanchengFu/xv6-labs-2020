@@ -42,8 +42,8 @@ handle_page_fault(void)
     // We need to check again for the validness (it can be the guard page).
     if (error_addr >= p->guard && error_addr < p->guard + PGSIZE) {
       // stack overflow.
-      // printf("stack overflow!\n");
       p->killed = 1;
+      return;
     } else {
       // This address is valid, we allocate a page, and map it to the user pagetable.
       // The address to be mapped.
@@ -52,15 +52,15 @@ handle_page_fault(void)
       if (mem == 0) {
         //panic("Not enough memory in usertrap.\n");
         p->killed = 1;
+        return;
       }
       memset(mem, 0, PGSIZE);
       if (mappages(p->pagetable, start_page, PGSIZE, (uint64)mem, PTE_W|PTE_X|PTE_R|PTE_U) != 0){
         kfree(mem);
         p -> killed = 1;
-        //panic("mappages in usertrap.");
+        return;
       }
       // We should redo the operation.
-      p->trapframe->epc -= 4;
     }
   } else {
     p->killed = 1;
@@ -107,6 +107,7 @@ usertrap(void)
   } else if((which_dev = devintr()) != 0){
     // ok
   } else if(r_scause() == 15 || r_scause() == 13) {
+    // Do we need to enable interupts here?
     handle_page_fault();
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
@@ -118,8 +119,10 @@ usertrap(void)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
+  if(which_dev == 2) {
     yield();
+  }
+
 
   usertrapret();
 }

@@ -44,16 +44,15 @@ copyin(char *s)
     }
     close(fd);
     unlink("copyin1");
-    
+
     n = write(1, (char*)addr, 8192);
     if(n > 0){
       printf("write(1, %p, 8192) returned %d, not -1 or 0\n", addr, n);
       exit(1);
     }
-    
+
     int fds[2];
     if(pipe(fds) < 0){
-      printf("pipe() failed\n");
       exit(1);
     }
     n = write(fds[1], (char*)addr, 8192);
@@ -2239,10 +2238,12 @@ sbrkarg(char *s)
 
   // test writes to allocated memory
   a = sbrk(PGSIZE);
-  if(pipe((int *) a) != 0){
+  uint64 res;
+  if((res = pipe((int *) a)) != 0){
+    printf("pipe() failed with res:%d\n",res);
     printf("%s: pipe() failed\n", s);
     exit(1);
-  } 
+  }
 }
 
 void
@@ -2598,8 +2599,9 @@ countfree()
 
   if(pid == 0){
     close(fds[0]);
-    
+
     while(1){
+      // allocate a page.
       uint64 a = (uint64) sbrk(4096);
       if(a == 0xffffffffffffffff){
         break;
@@ -2635,7 +2637,7 @@ countfree()
 
   close(fds[0]);
   wait((int*)0);
-  
+
   return n;
 }
 
@@ -2680,7 +2682,7 @@ main(int argc, char *argv[])
     printf("Usage: usertests [-c] [testname]\n");
     exit(1);
   }
-  
+
   struct test {
     void (*f)(char *);
     char *s;
@@ -2749,6 +2751,7 @@ main(int argc, char *argv[])
     printf("continuous usertests starting\n");
     while(1){
       int fail = 0;
+      // count how many free pages available here.
       int free0 = countfree();
       for (struct test *t = tests; t->s != 0; t++) {
         if(!run(t->f, t->s)){
@@ -2771,6 +2774,7 @@ main(int argc, char *argv[])
   }
 
   printf("usertests starting\n");
+  // count how many free pages
   int free0 = countfree();
   int free1 = 0;
   int fail = 0;
@@ -2785,6 +2789,7 @@ main(int argc, char *argv[])
     printf("SOME TESTS FAILED\n");
     exit(1);
   } else if((free1 = countfree()) < free0){
+    // So we actually only lost one page.
     printf("FAILED -- lost some free pages %d (out of %d)\n", free1, free0);
     exit(1);
   } else {

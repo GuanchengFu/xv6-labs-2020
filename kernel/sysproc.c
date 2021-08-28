@@ -49,6 +49,7 @@ sys_sbrk(void)
   addr = myproc()->sz;
   if (n <= 0) {
     // This will set the sz of the process properly.
+    // The growproc will try its best to free all the pages.
     if(growproc(n) < 0)
       return -1;
     else

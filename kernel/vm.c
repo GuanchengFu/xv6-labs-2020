@@ -5,6 +5,8 @@
 #include "riscv.h"
 #include "defs.h"
 #include "fs.h"
+#include "spinlock.h"
+#include "proc.h"
 
 /*
  * the kernel's page table.
@@ -102,10 +104,15 @@ walkaddr(pagetable_t pagetable, uint64 va)
     return 0;
 
   pte = walk(pagetable, va, 0);
-  if(pte == 0)
+  // pte not existed.
+  if(pte == 0) {
     return 0;
-  if((*pte & PTE_V) == 0)
+  }
+  // The last level is not in the memory.
+  if((*pte & PTE_V) == 0) {
     return 0;
+  }
+  // not a user space address.
   if((*pte & PTE_U) == 0)
     return 0;
   pa = PTE2PA(*pte);
@@ -284,10 +291,17 @@ freewalk(pagetable_t pagetable)
     if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0){
       // this PTE points to a lower-level page table.
       uint64 child = PTE2PA(pte);
+      // recursively free it.
       freewalk((pagetable_t)child);
       pagetable[i] = 0;
     } else if(pte & PTE_V){
-      panic("freewalk: leaf");
+      // pte is valid, and it may have Read/Write/Execute permissions, it is a leaf.
+      /* What will leads to this situaion if page fault is allowed?
+         The pagetable is freed.
+         Here, is the leaf already freed or only the V flag is set?
+       */
+      //panic("freewalk: leaf");
+      continue;
     }
   }
   kfree((void*)pagetable);
@@ -361,10 +375,27 @@ int
 copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 {
   uint64 n, va0, pa0;
+  struct proc *p = myproc();
 
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
     pa0 = walkaddr(pagetable, va0);
+    if (pa0 == 0) {
+      // we need to remap, and redo the walkaddr operation, and this probably not a guard page or stack.
+      if (dstva >= 0 && dstva <= p->sz) {
+        uint64 start_page = PGROUNDDOWN(dstva);
+        char *mem = kalloc();
+        if (mem == 0) {
+          pa0 = 0;
+        }
+        memset(mem, 0, PGSIZE);
+        if (mappages(p->pagetable, start_page, PGSIZE, (uint64)mem, PTE_W|PTE_X|PTE_R|PTE_U) != 0){
+          kfree(mem);
+          pa0 = 0;
+        }
+        pa0 = walkaddr(pagetable, va0);
+      }
+    }
     if(pa0 == 0)
       return -1;
     n = PGSIZE - (dstva - va0);
@@ -386,10 +417,30 @@ int
 copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
 {
   uint64 n, va0, pa0;
+  struct proc *p = myproc();
 
   while(len > 0){
     va0 = PGROUNDDOWN(srcva);
+    // we walk the address for the virtual address.
+    // error here, we do not map it to the address space.
     pa0 = walkaddr(pagetable, va0);
+    if (pa0 == 0) {
+      // we need to remap, and redo the walkaddr operation, and this probably not a guard page or stack.
+      if (srcva >= 0 && srcva <= p->sz) {
+        uint64 start_page = PGROUNDDOWN(srcva);
+        char *mem = kalloc();
+        if (mem == 0) {
+          pa0 = 0;
+        }
+        memset(mem, 0, PGSIZE);
+        if (mappages(p->pagetable, start_page, PGSIZE, (uint64)mem, PTE_W|PTE_X|PTE_R|PTE_U) != 0){
+          kfree(mem);
+          pa0 = 0;
+        }
+        pa0 = walkaddr(pagetable, va0);
+      }
+    }
+
     if(pa0 == 0)
       return -1;
     n = PGSIZE - (srcva - va0);

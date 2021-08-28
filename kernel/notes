@@ -1,1 +1,3 @@
-1. We should also take care when cleaning the resource used by sbrk.
+1. Will the page fault happens in the kernel space?  If yes, in what situation?
+2. Why the freeproc panic, we lost some pages, where do we lost it?
+   -> seems the same problem, we need to figure it out.

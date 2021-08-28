@@ -461,7 +461,7 @@ sys_pipe(void)
   struct file *rf, *wf;
   int fd0, fd1;
   struct proc *p = myproc();
-
+  // get the address for fdarray.
   if(argaddr(0, &fdarray) < 0)
     return -1;
   if(pipealloc(&rf, &wf) < 0)
