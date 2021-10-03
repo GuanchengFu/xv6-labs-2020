@@ -1,0 +1,6 @@
+1. The condition is quite simple.
+When two threads want to insert a new key to the same bucket.
+The later submitted key will overwritten the first one if no lock is added.
+
+There are also conditions when a duplicate element is added to the table.
+When one is scanning for the element while the other thread trys to add this element.

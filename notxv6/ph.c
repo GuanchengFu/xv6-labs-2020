@@ -16,6 +16,7 @@ struct entry {
 struct entry *table[NBUCKET];
 int keys[NKEYS];
 int nthread = 1;
+pthread_mutex_t lock;
 
 double
 now()
@@ -42,17 +43,23 @@ void put(int key, int value)
 
   // is the key already present?
   struct entry *e = 0;
+  // Perform read to the shared data structure.
+  pthread_mutex_lock(&lock);
   for (e = table[i]; e != 0; e = e->next) {
     if (e->key == key)
       break;
   }
+  // update to the shared data structure.
   if(e){
     // update the existing key.
     e->value = value;
   } else {
-    // the new is new.
+    // the key is new.
+    // This is insert to the head.  If multiple threads trying to do this at the same time
+    // The later added key will overwrite the previous key.
     insert(key, value, &table[i], table[i]);
   }
+  pthread_mutex_unlock(&lock);
 }
 
 static struct entry*
@@ -76,6 +83,8 @@ put_thread(void *xa)
   int b = NKEYS/nthread;
 
   for (int i = 0; i < b; i++) {
+    // keys is a shared data structure, but is fine.
+    // Both are reads.
     put(keys[b*n + i], n);
   }
 
@@ -102,6 +111,7 @@ main(int argc, char *argv[])
   pthread_t *tha;
   void *value;
   double t1, t0;
+  pthread_mutex_init(&lock, NULL);
 
   if (argc < 2) {
     fprintf(stderr, "Usage: %s nthreads\n", argv[0]);
