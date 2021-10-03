@@ -15,9 +15,21 @@ struct entry {
 };
 struct entry *table[NBUCKET];
 int keys[NKEYS];
+int duplicate = 0;
 int nthread = 1;
-pthread_mutex_t lock;
+pthread_mutex_t lock_bucket[5];
 
+int total_elements() {
+  int sum = 0;
+  for (int i = 0; i < NBUCKET; i++) {
+    struct entry *e = table[i];
+    while (e != NULL) {
+      e = e -> next;
+      sum += 1;
+    }
+  }
+  return sum;
+}
 double
 now()
 {
@@ -44,12 +56,12 @@ void put(int key, int value)
   // is the key already present?
   struct entry *e = 0;
   // Perform read to the shared data structure.
-  pthread_mutex_lock(&lock);
   for (e = table[i]; e != 0; e = e->next) {
     if (e->key == key)
       break;
   }
   // update to the shared data structure.
+  pthread_mutex_lock(&lock_bucket[i]);
   if(e){
     // update the existing key.
     e->value = value;
@@ -59,7 +71,7 @@ void put(int key, int value)
     // The later added key will overwrite the previous key.
     insert(key, value, &table[i], table[i]);
   }
-  pthread_mutex_unlock(&lock);
+  pthread_mutex_unlock(&lock_bucket[i]);
 }
 
 static struct entry*
@@ -111,7 +123,9 @@ main(int argc, char *argv[])
   pthread_t *tha;
   void *value;
   double t1, t0;
-  pthread_mutex_init(&lock, NULL);
+  for (int i = 0; i < NBUCKET; i ++) {
+    pthread_mutex_init(&lock_bucket[i], NULL);
+  }
 
   if (argc < 2) {
     fprintf(stderr, "Usage: %s nthreads\n", argv[0]);
@@ -154,4 +168,5 @@ main(int argc, char *argv[])
 
   printf("%d gets, %.3f seconds, %.0f gets/second\n",
          NKEYS*nthread, t1 - t0, (NKEYS*nthread) / (t1 - t0));
+  printf("%d elements in total!\n", total_elements());
 }
