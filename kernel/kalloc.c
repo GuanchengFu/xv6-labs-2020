@@ -23,10 +23,20 @@ struct {
   struct run *freelist;
 } kmem;
 
+// NCPU is 8, which is the maximum number of CPU allowed in this machine.
+struct {
+  struct spinlock lock;
+  struct run *freelist;
+  int core_num;
+} kmem_c[NCPU];
+
 void
 kinit()
 {
   initlock(&kmem.lock, "kmem");
+  for (int i = 0; i < NCPU; i ++) {
+    initlock(&kmem_c[i].lock, "kmem");
+  }
   freerange(end, (void*)PHYSTOP);
 }
 
