@@ -1,0 +1,31 @@
+1. for the first test, we probably need to rewrite the os memory allocation system.
+
+It includes:
+ -- The initialization of the freelist(free all the free memory).
+ -- We can divide the inital memory.
+ -- Maintain a data structure per core to get its usage of memory.
+ -- Steal memory from other cores if there is no memory now.
+ -- Handle the cases when memory is returned to the system.
+
+
+If one thread begun by core 1, and allocate some memory to it.  Finally, it ends
+in core 2, then the memory from core 1 list will go to core 2 list.
+
+
+
+
+
+bcache.lock protects the following things:
+b->dev b->blockno  per bucket cache lock.
+refcount per bucket cache lock.
+buffer lock is only used when multiple buckets are involved.involved
+1. buffer, refcount, b->dev and b->blockno.
+we should delete bcache, instead, we should create a hash table.
+
+
+
+Change:
+1. block cache
+2. modify bget and brelse -> current lookups and release not conflict on locks.
+
+bcache are truly shared between different CPUS.

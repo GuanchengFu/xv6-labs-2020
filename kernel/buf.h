@@ -8,5 +8,6 @@ struct buf {
   struct buf *prev; // LRU cache list
   struct buf *next;
   uchar data[BSIZE];
+  uint tick;   // time-stamp used to find the least recently used block.
 };
 
