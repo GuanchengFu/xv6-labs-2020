@@ -7,6 +7,7 @@ main(int argc, char *argv[])
 {
   int i;
 
+  symlink("wow", "test");
   for(i = 1; i < argc; i++){
     write(1, argv[i], strlen(argv[i]));
     if(i + 1 < argc){
