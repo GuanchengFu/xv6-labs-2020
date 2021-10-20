@@ -116,6 +116,7 @@ sys_fstat(void)
 }
 
 // Create the path new as a link to the same inode as old.
+// Hard link?
 uint64
 sys_link(void)
 {
@@ -125,6 +126,7 @@ sys_link(void)
   if(argstr(0, old, MAXPATH) < 0 || argstr(1, new, MAXPATH) < 0)
     return -1;
 
+  // find the inode for the old
   begin_op();
   if((ip = namei(old)) == 0){
     end_op();
@@ -142,6 +144,7 @@ sys_link(void)
   iupdate(ip);
   iunlock(ip);
 
+  // find the inode for the parent
   if((dp = nameiparent(new, name)) == 0)
     goto bad;
   ilock(dp);
