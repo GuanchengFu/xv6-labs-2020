@@ -521,24 +521,17 @@ sys_symlink(void)
     goto bad;
   }
 
-  // good, file does not exist.
-  // create a new inode.
-  if((linknode = ialloc(parent->dev, T_SYMLINK)) == 0)
-    panic("symlink: ialloc");
-
-  ilock(linknode);
-  linknode->nlink = 1;
-  // call writei to write the link to the first block.
-  if(writei(linknode, 0, (uint64)target, 0, MAXPATH) != MAXPATH)
-    panic("symlink: writei");
-  iupdate(linknode);
-  // now, add the linknode to the directory.
-
-  if(dirlink(parent, name, linknode->inum) < 0)
-    panic("symlink: dirlink");
-
-  iunlockput(linknode);
   iunlockput(parent);
+  // good, file does not exist.
+  // create a new file.
+  if((linknode = create(link, T_SYMLINK, 0, 0)) == 0){
+    goto bad;
+  }
+  if(writei(linknode, 0, (uint64)target, 0, MAXPATH) != MAXPATH){
+    panic("symlink: writei");
+  }
+  iupdate(linknode);
+  iunlockput(linknode);
   end_op();
 
   // Let's try if we can read the content out of it.
@@ -553,7 +546,6 @@ sys_symlink(void)
   /*end_op();*/
   return 0;
 bad:
-  iunlockput(parent);
   end_op();
   return -1;
 }
