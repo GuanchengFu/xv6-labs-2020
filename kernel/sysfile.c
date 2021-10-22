@@ -286,6 +286,49 @@ create(char *path, short type, short major, short minor)
   return ip;
 }
 
+struct inode *
+get_inode_compa_symlink(char *path, int omode)
+{
+  struct inode *ip;
+  int depth = 0;
+  if((ip=namei(path))==0){
+    return 0;
+  }
+
+  // good, file existed
+  ilock(ip);
+  if (ip->type != T_SYMLINK){
+    iunlock(ip);
+    return ip;
+  }
+  if (omode & O_NOFOLLOW){
+    iunlock(ip);
+    return ip;
+  }
+
+  char temp[MAXPATH];
+  while(ip->type == T_SYMLINK){
+    memset(temp, 0, MAXPATH);
+    if(depth >= 10){
+      iunlockput(ip);
+      return 0;
+    }
+    if(readi(ip, 0, (uint64)temp, 0, MAXPATH)!=MAXPATH){
+      iunlockput(ip);
+      return 0;
+    }
+    readi(ip, 0, (uint64)temp, 0, MAXPATH);
+    iunlockput(ip);
+    if((ip=namei(temp))==0){
+      return 0;
+    }
+    depth += 1;
+    ilock(ip);
+  }
+  iunlock(ip);
+  return ip;
+}
+
 uint64
 sys_open(void)
 {
@@ -307,7 +350,11 @@ sys_open(void)
       return -1;
     }
   } else {
-    if((ip = namei(path)) == 0){
+/*    if((ip = namei(path)) == 0){*/
+      /*end_op();*/
+      /*return -1;*/
+    /*}*/
+    if ((ip = get_inode_compa_symlink(path, omode)) == 0){
       end_op();
       return -1;
     }
@@ -517,8 +564,16 @@ sys_symlink(void)
 
   // Does the file already existed?
   if((linknode = dirlookup(parent, name, 0)) != 0){
-    iput(linknode);
-    goto bad;
+    iunlockput(parent);
+    ilock(linknode);
+    linknode->type = T_SYMLINK;
+    if(writei(linknode, 0, (uint64)target, 0, MAXPATH) != MAXPATH){
+      panic("symlink: writei");
+    }
+    iupdate(linknode);
+    iunlockput(linknode);
+    end_op();
+    return 0;  
   }
 
   iunlockput(parent);
@@ -527,6 +582,7 @@ sys_symlink(void)
   if((linknode = create(link, T_SYMLINK, 0, 0)) == 0){
     goto bad;
   }
+  linknode->type = T_SYMLINK;
   if(writei(linknode, 0, (uint64)target, 0, MAXPATH) != MAXPATH){
     panic("symlink: writei");
   }
