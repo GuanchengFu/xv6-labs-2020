@@ -319,12 +319,14 @@ sys_open(void)
     }
   }
 
+  // find the inode related to the opened path.
   if(ip->type == T_DEVICE && (ip->major < 0 || ip->major >= NDEV)){
     iunlockput(ip);
     end_op();
     return -1;
   }
 
+  // create the fd and the file, this is the file descriptor layer.
   if((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0){
     if(f)
       fileclose(f);
@@ -491,6 +493,67 @@ sys_pipe(void)
 uint64
 sys_symlink(void)
 {
-  printf("sys_symlink get called!\n");
+  char name[DIRSIZ];
+  char link[MAXPATH], target[MAXPATH];
+  struct inode *parent, *linknode;
+
+  if(argstr(0, target, MAXPATH) < 0 || argstr(1, link, MAXPATH) < 0)
+    return -1;
+
+  // nameiparent must be inside the transaction.
+  begin_op();
+  // Check if the link path existed or not.
+  if ((parent = nameiparent(link, name)) == 0){
+    end_op();
+    return -1;
+  }
+  ilock(parent);
+  // Parent must be a directory.
+  if (parent->type != T_DIR) {
+    iunlockput(parent);
+    end_op();
+    return -1;
+  }
+
+  // Does the file already existed?
+  if((linknode = dirlookup(parent, name, 0)) != 0){
+    iput(linknode);
+    goto bad;
+  }
+
+  // good, file does not exist.
+  // create a new inode.
+  if((linknode = ialloc(parent->dev, T_SYMLINK)) == 0)
+    panic("symlink: ialloc");
+
+  ilock(linknode);
+  linknode->nlink = 1;
+  // call writei to write the link to the first block.
+  if(writei(linknode, 0, (uint64)target, 0, MAXPATH) != MAXPATH)
+    panic("symlink: writei");
+  iupdate(linknode);
+  // now, add the linknode to the directory.
+
+  if(dirlink(parent, name, linknode->inum) < 0)
+    panic("symlink: dirlink");
+
+  iunlockput(linknode);
+  iunlockput(parent);
+  end_op();
+
+  // Let's try if we can read the content out of it.
+  /*begin_op();*/
+  /*printf("Try to find file:%s\n", link);*/
+  /*linknode = namei(link);*/
+  /*ilock(linknode);*/
+  /*char tempname[MAXPATH];*/
+  /*readi(linknode, 0, (uint64)tempname, 0, MAXPATH);*/
+  /*printf("get content:%s\n", tempname);*/
+  /*iunlockput(linknode);*/
+  /*end_op();*/
   return 0;
+bad:
+  iunlockput(parent);
+  end_op();
+  return -1;
 }
