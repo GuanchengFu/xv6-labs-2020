@@ -1,4 +1,5 @@
 // Saved registers for kernel context switches.
+struct vma;
 struct context {
   uint64 ra;
   uint64 sp;
@@ -102,6 +103,7 @@ struct proc {
   struct context context;      // swtch() here to run process
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
+  struct vma *vma_area;
   char name[16];               // Process name (debugging)
 };
 
@@ -111,5 +113,7 @@ struct vma {
   uint64 length;               // The length of the mapping.
   struct file *f;              // The mapped file.
   int available;               // Whether this vma is usable or not.
+  int prot;
+  int flags;
   struct vma *next;            // In the case where multiple vma is mapped.
 };

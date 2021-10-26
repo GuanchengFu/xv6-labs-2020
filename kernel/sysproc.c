@@ -7,6 +7,7 @@
 #include "spinlock.h"
 #include "proc.h"
 
+#define FAIL_ADDR 0xffffffffffffffff
 uint64
 sys_exit(void)
 {
@@ -97,19 +98,54 @@ sys_uptime(void)
 }
 
 
+int
+check_aligned(uint64 addr)
+{
+  if(addr % PGSIZE == 0)
+    return 1;
+
+  return 0;
+}
+
 uint64
 sys_mmap(void)
 {
-  printf("sys_mmap get called!\n");
-  //TODO: Implement this.
+  uint64 length;
+  int prot, flags, fd;
+  uint64 oldsz;
+  struct vma *v;
+
   // Get arguments from the stack, do the valid check.
+  if(argaddr(1, &length) < 0 || argint(2, &prot) < 0 || argint(3, &flags) < 0 ||
+      argint(4, &fd) < 0){
+    printf("invalid argument!\n");
+    return FAIL_ADDR;
+  }
 
-  // addr check: Do we have enough space? return 0xffffffffffffffff if failed.
+  // Set up the vma area, and added to the process.
+  v = (struct vma *)get_vma();
+  v -> starting_addr = myproc()->sz;
+  if (check_aligned(v->starting_addr) == 0){
+    printf("addr:%p\n", v->starting_addr);
+    panic("mmap: not aligned");
+  }
+  v -> length = length;
+  v -> f = myproc()->ofile[fd];
+  v -> prot = prot;
+  v -> flags = flags;
+  v -> next = myproc()->vma_area;
+  myproc()->vma_area = v;
 
-  // Check for the length variable: larger than 0, smaller than the file length.
 
-  // Add the size of the myproc()->size and return, do the lazy allocation.
-  return -1;
+  // Increase the opened file count.
+  filedup(myproc()->ofile[fd]);
+
+
+  // Increase the process size.
+  oldsz = myproc()->sz;
+  myproc()->sz += length;
+
+  return oldsz;
 }
 
 uint64
@@ -117,5 +153,6 @@ sys_munmap(void)
 {
   printf("sys_munmap get called!\n");
   // TODO: Implement this.
+  // TODO: Reduce the file ref count.
   return -1;
 }

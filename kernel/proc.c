@@ -45,12 +45,16 @@ void
 procinit(void)
 {
   struct proc *p;
+  int i;
   
   initlock(&pid_lock, "nextpid");
   initlock(&vma_lock, "nextvma");
   for(p = proc; p < &proc[NPROC]; p++) {
       initlock(&p->lock, "proc");
       p->kstack = KSTACK((int) (p - proc));
+  }
+  for(i = 0; i < VMA_NUM; i ++){
+      vmas[i].available = 1;
   }
 }
 
