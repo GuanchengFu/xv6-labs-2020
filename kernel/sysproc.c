@@ -101,6 +101,14 @@ uint64
 sys_mmap(void)
 {
   printf("sys_mmap get called!\n");
+  //TODO: Implement this.
+  // Get arguments from the stack, do the valid check.
+
+  // addr check: Do we have enough space? return 0xffffffffffffffff if failed.
+
+  // Check for the length variable: larger than 0, smaller than the file length.
+
+  // Add the size of the myproc()->size and return, do the lazy allocation.
   return -1;
 }
 
@@ -108,5 +116,6 @@ uint64
 sys_munmap(void)
 {
   printf("sys_munmap get called!\n");
+  // TODO: Implement this.
   return -1;
 }

@@ -104,3 +104,12 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
 };
+
+
+struct vma {
+  uint64 starting_addr;        // Starting address of the mapping.
+  uint64 length;               // The length of the mapping.
+  struct file *f;              // The mapped file.
+  int available;               // Whether this vma is usable or not.
+  struct vma *next;            // In the case where multiple vma is mapped.
+};

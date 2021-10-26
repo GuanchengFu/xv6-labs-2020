@@ -12,9 +12,11 @@ struct proc proc[NPROC];
 
 struct proc *initproc;
 
+struct vma vmas[VMA_NUM];
+
 int nextpid = 1;
 struct spinlock pid_lock;
-
+struct spinlock vma_lock;
 extern void forkret(void);
 static void wakeup1(struct proc *chan);
 static void freeproc(struct proc *p);
@@ -45,6 +47,7 @@ procinit(void)
   struct proc *p;
   
   initlock(&pid_lock, "nextpid");
+  initlock(&vma_lock, "nextvma");
   for(p = proc; p < &proc[NPROC]; p++) {
       initlock(&p->lock, "proc");
       p->kstack = KSTACK((int) (p - proc));
@@ -700,4 +703,36 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+// Get the address of a free vma.
+uint64
+get_vma()
+{
+  int i;
+  acquire(&vma_lock);
+  for (i = 0; i < VMA_NUM; i++) {
+    if (vmas[i].available == 1) {
+      vmas[i].available = 0;
+      release(&vma_lock);
+      return (uint64)&vmas[i];
+    } 
+  }
+  panic("get_vma: no available vma");
+}
+
+// Free the vma related to a process.
+void
+free_vma(struct vma *start)
+{
+  struct vma *p;
+  acquire(&vma_lock);
+  p = start;
+  while (p != 0) {
+    if (p->available != 0)
+      panic("free_vma: unused vma");
+    p->available = 0;
+    p = p->next;
+  }
+  release(&vma_lock);
 }
