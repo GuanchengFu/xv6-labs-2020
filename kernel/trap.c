@@ -51,7 +51,11 @@ void handle_page_fault(void)
   struct vma* v;
   uint64 offset, read_size;
   struct inode *ip;
-  if (error_addr >= 0 && error_addr <= p->sz) {
+  if (error_addr < p->trapframe->sp) {
+    p->killed = 1;
+    return;
+  }
+  if (error_addr < p->sz) {
     // We need to check again for the validness (it can be the guard page).
     // You know what? I won't check this.
     

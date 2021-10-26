@@ -71,8 +71,7 @@ cpuid()
 // Return this CPU's cpu struct.
 // Interrupts must be disabled.
 struct cpu*
-mycpu(void) {
-  int id = cpuid();
+mycpu(void) { int id = cpuid();
   struct cpu *c = &cpus[id];
   return c;
 }
@@ -729,14 +728,26 @@ get_vma()
 void
 free_vma(struct vma *start)
 {
-  struct vma *p;
+  struct vma *pointer;
+  struct proc *p = myproc();
   acquire(&vma_lock);
-  p = start;
-  while (p != 0) {
-    if (p->available != 0)
+
+  if (start->available != 0)
       panic("free_vma: unused vma");
-    p->available = 0;
-    p = p->next;
+
+  if (p->vma_area == start) {
+    p->vma_area = start->next;
+    start->available = 0;
+  } else {
+    pointer = p -> vma_area;
+    while (pointer -> next != start) {
+      pointer = pointer->next;
+    }
+    if (pointer -> next != start) {
+      panic("free_vma: does not find slot");
+    }
+    pointer -> next = start -> next;
+    start -> available = 0;
   }
   release(&vma_lock);
 }

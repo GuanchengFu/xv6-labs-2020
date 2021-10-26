@@ -114,7 +114,6 @@ mmap_test(void)
   if (p == MAP_FAILED)
     err("mmap (1)");
   _v1(p);
-  printf("temp pass!\n");
   if (munmap(p, PGSIZE*2) == -1)
     err("munmap (1)");
 
@@ -164,11 +163,9 @@ mmap_test(void)
 
   // check that the mapping still works after close(fd).
   _v1(p);
-
   // write the mapped memory.
   for (i = 0; i < PGSIZE*2; i++)
     p[i] = 'Z';
-
   // unmap just the first two of three pages of mapped memory.
   if (munmap(p, PGSIZE*2) == -1)
     err("munmap (3)");
@@ -196,6 +193,7 @@ mmap_test(void)
   printf("test not-mapped unmap\n");
   
   // unmap the rest of the mapped memory.
+  printf("temp pass!\n");
   if (munmap(p+PGSIZE*2, PGSIZE) == -1)
     err("munmap (4)");
 

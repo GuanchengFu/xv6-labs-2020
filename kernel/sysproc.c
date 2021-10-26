@@ -1,4 +1,5 @@
 #include "types.h"
+#include "fcntl.h"
 #include "riscv.h"
 #include "defs.h"
 #include "date.h"
@@ -6,6 +7,9 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "sleeplock.h"
+#include "fs.h"
+#include "file.h"
 
 #define FAIL_ADDR 0xffffffffffffffff
 uint64
@@ -122,6 +126,12 @@ sys_mmap(void)
     return FAIL_ADDR;
   }
 
+  // check read only file get mapped write permission.
+  if(flags & MAP_SHARED) {
+    // ensure that the prot is less than the open mode.
+    if (!myproc()->ofile[fd]->writable && (prot & PROT_WRITE))
+      return FAIL_ADDR;
+  }
   // Set up the vma area, and added to the process.
   v = (struct vma *)get_vma();
   v -> starting_addr = myproc()->sz;
@@ -148,11 +158,82 @@ sys_mmap(void)
   return oldsz;
 }
 
+// This function should free the section and write to the underlying file if needed.
+void
+munmap_pages(uint64 addr, int page_count, int flags, struct vma *v)
+{
+  printf("addr is:%p\n", addr);
+  printf("free %d pages\n", page_count);
+  struct proc *p = myproc();
+  int write_back;
+
+  if (flags & MAP_SHARED)
+    write_back = 1;
+  else
+    write_back = 0;
+
+  if(write_back == 1){
+    // write the content back to the file.
+    filewrite_kernel(v->f, addr, page_count * PGSIZE, addr - v->starting_addr);
+  }
+  // unmap the content
+  uvmunmap(p->pagetable, addr, page_count, 1);
+}
+
 uint64
 sys_munmap(void)
 {
-  printf("sys_munmap get called!\n");
-  // TODO: Implement this.
   // TODO: Reduce the file ref count.
-  return -1;
+  uint64 addr, length;
+  int unmap_pages, total_pages, available_pages;
+  struct vma *v;
+  if (argaddr(0, &addr) < 0 || argaddr(1, &length) < 0)
+    return -1;
+
+  // check that addr is page-aligned.
+  if(check_aligned(addr) == 0)
+    panic("unmap: not aligned address");
+
+  // find the vma related to the address.
+  v = find_vma(addr); 
+  // How many pages should we unmap?
+  if ((v->starting_addr + v->length - addr) % PGSIZE != 0) {
+    available_pages = (v->starting_addr + v->length - addr) / PGSIZE + 1;
+  } else {
+    available_pages = (v->starting_addr + v->length - addr) / PGSIZE;
+  }
+  if (length % PGSIZE != 0){
+    unmap_pages = length / PGSIZE + 1;
+  } else {
+    unmap_pages = length / PGSIZE;
+  }
+  if (v->length % PGSIZE != 0) {
+    total_pages = v->length / PGSIZE + 1;
+  } else {
+    total_pages = v->length / PGSIZE;
+  }
+  // new added 
+  if (unmap_pages > available_pages)
+    unmap_pages = available_pages;
+
+  if (addr == v->starting_addr) {
+    if (unmap_pages > total_pages) {
+      panic("unmap: more pages unmmaped than total");
+    }
+    if (unmap_pages == total_pages) {
+      munmap_pages(addr, unmap_pages, v->flags, v);
+      // close the related file.
+      fileclose(v->f); 
+      // Release the vma pointer.
+      free_vma(v);
+    } else {
+      munmap_pages(addr, unmap_pages, v->flags, v);
+      v->starting_addr = v->starting_addr + PGSIZE * unmap_pages;
+      v->length -= unmap_pages * PGSIZE;
+    }
+  } else {
+    munmap_pages(addr, unmap_pages, v->flags, v);
+    v->length -= unmap_pages * PGSIZE;
+  }
+  return 0;
 }

@@ -34,6 +34,7 @@ void            fileinit(void);
 int             fileread(struct file*, uint64, int n);
 int             filestat(struct file*, uint64 addr);
 int             filewrite(struct file*, uint64, int n);
+int             filewrite_kernel(struct file*, uint64, int n, uint64);
 
 // fs.c
 void            fsinit(int);
@@ -149,6 +150,7 @@ void            trapinit(void);
 void            trapinithart(void);
 extern struct spinlock tickslock;
 void            usertrapret(void);
+struct vma*     find_vma(uint64);
 
 // uart.c
 void            uartinit(void);
