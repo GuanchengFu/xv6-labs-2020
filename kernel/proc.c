@@ -266,6 +266,41 @@ growproc(int n)
   return 0;
 }
 
+
+struct vma *
+copy_vma(void)
+{
+  struct proc *p = myproc();
+  struct vma *v, *newv, *pointer;
+  if (p->vma_area == 0)
+    return 0;
+  else {
+    v = p->vma_area;
+    newv = (struct vma*)get_vma();
+    newv->starting_addr = v->starting_addr;
+    newv->length = v->length;
+    newv->f = v->f;
+    filedup(newv->f);
+    newv->prot = v->prot;
+    newv->flags = v -> flags;
+  }
+  pointer = newv;
+  while (v->next != 0) {
+    printf("%p\n", v->next);
+    pointer -> next = (struct vma *)get_vma();
+    pointer -> next -> starting_addr = v->next->starting_addr;
+    pointer -> next -> length = v->next->length;
+    pointer -> next -> f = v->next->f;
+    filedup(pointer->next->f);
+    pointer -> next -> prot = v->next ->prot;
+    pointer -> next -> flags = v->next -> flags;
+    pointer = pointer -> next;
+    v = v->next;
+  }
+  pointer -> next = 0;
+  return newv;
+}
+
 // Create a new process, copying the parent.
 // Sets up child kernel stack to return as if from fork() system call.
 int
@@ -274,18 +309,28 @@ fork(void)
   int i, pid;
   struct proc *np;
   struct proc *p = myproc();
+  struct vma *v;
 
   // Allocate process.
   if((np = allocproc()) == 0){
     return -1;
   }
 
-  // Copy user memory from parent to child.
+   // Copy user memory from parent to child.
   if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
     freeproc(np);
     release(&np->lock);
     return -1;
   }
+  
+  // copy vma from parent.
+  v = copy_vma();
+  if (v == 0)
+    np->vma_area = 0;
+  else {
+    np->vma_area = v;
+  }
+
   np->sz = p->sz;
 
   np->parent = p;
@@ -748,6 +793,7 @@ free_vma(struct vma *start)
     }
     pointer -> next = start -> next;
     start -> available = 0;
+    start -> next = 0;
   }
   release(&vma_lock);
 }

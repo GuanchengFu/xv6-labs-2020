@@ -193,7 +193,6 @@ mmap_test(void)
   printf("test not-mapped unmap\n");
   
   // unmap the rest of the mapped memory.
-  printf("temp pass!\n");
   if (munmap(p+PGSIZE*2, PGSIZE) == -1)
     err("munmap (4)");
 
@@ -273,6 +272,7 @@ fork_test(void)
 
   if((pid = fork()) < 0)
     err("fork");
+  printf("temp pass!\n");
   if (pid == 0) {
     _v1(p1);
     munmap(p1, PGSIZE); // just the first page
